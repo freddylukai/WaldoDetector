@@ -12,9 +12,9 @@ _DATA_FILE = None
 def train_input_fn():
     pass
 
-def model_fn(images, labels, mode):
+def model_fn(features, labels, mode):
     network = WaldoNet.inference
-    logits = network(x=images)
+    logits = network(x=features)
     predictions = {
         'classes': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits, name='prediction_probability')
