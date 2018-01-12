@@ -3,6 +3,7 @@ from PIL import Image
 import random
 
 BOX_SIZE = 40
+IMGS_EACH = 50
 
 def createDict(locationCSV):
     d = {}
@@ -25,9 +26,9 @@ def generateForFile(img, location, newLocationDictionary, newImageDirectory, ran
     box = (location[0]-BOX_SIZE, location[1]-BOX_SIZE, location[0]+BOX_SIZE, location[1]+BOX_SIZE)
     region = img.crop(box)
     img.save(newImageDirectory+"/"+newFilename)
-    for i in range(0, 1000):
+    for i in range(0, IMGS_EACH):
         counter += 1
-        newFilename = "img%06.jpg" % (counter)
+        newFilename = "img%06d.jpg" % (counter)
         randomFile = randomImages[random.randint(0, len(randomImages)-1)]
         randomImg = Image.open(randomFile)
         s = randomImg.size
@@ -47,6 +48,9 @@ def generate(locationCSV, originalImageDirectory, newImageDirectory, randomImage
         img = Image.open(originalImageDirectory+"/"+filename)
         counter = generateForFile(img, locations[filename], newLocationDictionary, newImageDirectory, randomImages, counter)
     with open('trainingImages.txt', 'w') as f:
-        for k, v in newLocationDictionary:
+        for k, v in newLocationDictionary.items():
             s = k + ", " + str(v[0]) + ", " + str(v[1]) + "\n"
             f.write(s)
+
+if __name__ == '__main__':
+    generate("C:\WaldoIms\stuff.csv", "C:\WaldoIms\WaldoDir", "C:\WaldoIms\TheNewDir", "C:\WaldoIms\RandomImDir")
