@@ -31,8 +31,7 @@ def train_input_fn(locations):
     return images, labels
 
 def model_fn(features, labels, mode):
-    network = WaldoNet.inference
-    logits = network(x=features)
+    logits = WaldoNet.inference(x=features)
     predictions = {
         'classes': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits, name='prediction_probability')
