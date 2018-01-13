@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 from src import WaldoNet
 
@@ -9,8 +10,25 @@ _MODEL_DIR = None
 _DATA_DIR = None
 _DATA_FILE = None
 
-def train_input_fn():
-    pass
+def getFileNames(dir):
+    fnames = []
+    for file in os.listdir(dir):
+        fnames.append(file)
+    return fnames
+
+def decodeImage(file, location):
+    image = tf.image.decode_png(_DATA_DIR+"/"+file, channels=3)
+    return image, tf.one_hot(location[0], location[1])
+
+def train_input_fn(locations):
+    dataset = tf.data.Dataset.from_tensor_slices(getFileNames(_DATA_DIR))
+    dataset.shuffle(buffer_size=1024)
+    dataset = dataset.map(lambda value: decodeImage(value, locations[value]))
+    dataset = dataset.prefetch(4*_BATCH_SIZE)
+    dataset = dataset.batch(_BATCH_SIZE)
+    iterator = dataset.make_one_shot_iterator()
+    images, labels = iterator.get_next()
+    return images, labels
 
 def model_fn(features, labels, mode):
     network = WaldoNet.inference
@@ -41,5 +59,15 @@ def model_fn(features, labels, mode):
         eval_metric_ops=metrics)
 
 def main(unused_argv):
+    filedict = []
+    with open(_DATA_FILE) as f:
+        for line in f:
+            s = line.split(",")
+            filedict[s[0]] = (int(s[1]), int(s[2]))
     run_config = tf.estimator.RunConfig().replace(save_checkpoint_steps=500, save_summary_steps=50, model_dir=_MODEL_DIR)
+    waldo_finder = tf.estimator.Estimator(model_fn=model_fn, model_dir=_MODEL_DIR, config=run_config)
+    waldo_finder.train(input_fn=lambda: train_input_fn(filedict))
+
+if __name__ == "__main__":
+    tf.app.run()
 
