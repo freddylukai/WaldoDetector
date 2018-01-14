@@ -4,26 +4,31 @@ from src import WaldoNet
 
 _MOMENTUM = 0.9
 _LEARNING_RATE = 0.01
-_BATCH_SIZE = 32
+_BATCH_SIZE = 4
 _ITERATIONS = 10000
-_MODEL_DIR = None
-_DATA_DIR = None
-_DATA_FILE = None
+_MODEL_DIR = r"E:\COS 429\FinalProj\Model"
+_DATA_DIR = r"E:\COS 429\FinalProj\TheNewIms"
+_DATA_FILE = r"E:\COS 429\FinalProj\imagesForTraining.txt"
 
-def getFileNames(dir):
+def getFileNames(dir, locations):
     fnames = []
     for file in os.listdir(dir):
-        fnames.append(file)
+        fnames.append((_DATA_DIR+'/'+file, int(locations[file][0]), int(locations[file][1])))
     return fnames
 
-def decodeImage(file, location):
-    image = tf.image.decode_png(_DATA_DIR+"/"+file, channels=3)
-    return image, tf.one_hot(location[0], location[1])
+def decodeImage(filename, label, len):
+    image = tf.image.decode_png(tf.read_file(filename), channels=3)
+    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+    return image, tf.one_hot(label, len)
 
 def train_input_fn(locations):
-    dataset = tf.data.Dataset.from_tensor_slices(getFileNames(_DATA_DIR))
+    f = getFileNames(_DATA_DIR, locations)
+    fnames = [x[0] for x in f]
+    labels = [x[1] for x in f]
+    lens = [x[2] for x in f]
+    dataset = tf.data.Dataset.from_tensor_slices((fnames, labels, lens))
     dataset.shuffle(buffer_size=1024)
-    dataset = dataset.map(lambda value: decodeImage(value, locations[value]))
+    dataset = dataset.map(decodeImage)
     dataset = dataset.prefetch(4*_BATCH_SIZE)
     dataset = dataset.batch(_BATCH_SIZE)
     iterator = dataset.make_one_shot_iterator()
@@ -31,7 +36,7 @@ def train_input_fn(locations):
     return images, labels
 
 def model_fn(features, labels, mode):
-    logits = WaldoNet.inference(x=features)
+    logits = WaldoNet.inference(x=features, num_classes=250000, batch_size=_BATCH_SIZE)
     predictions = {
         'classes': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits, name='prediction_probability')
@@ -58,15 +63,25 @@ def model_fn(features, labels, mode):
         eval_metric_ops=metrics)
 
 def main(unused_argv):
-    filedict = []
+
+    filedict = {}
     with open(_DATA_FILE) as f:
         for line in f:
             s = line.split(",")
             filedict[s[0]] = (int(s[1]), int(s[2]))
-    run_config = tf.estimator.RunConfig().replace(save_checkpoint_steps=500, save_summary_steps=50, model_dir=_MODEL_DIR)
+    run_config = tf.estimator.RunConfig().replace(save_checkpoints_steps=500, save_summary_steps=50, model_dir=_MODEL_DIR)
     waldo_finder = tf.estimator.Estimator(model_fn=model_fn, model_dir=_MODEL_DIR, config=run_config)
-    waldo_finder.train(input_fn=lambda: train_input_fn(filedict))
+    tensors_to_log = {
+        'learning_rate': 'learning_rate',
+        'cross_entropy': 'cross_entropy',
+        'train_accuracy': 'train_accuracy'
+    }
+
+    logging_hook = tf.train.LoggingTensorHook(
+        tensors=tensors_to_log, every_n_iter=100)
+    waldo_finder.train(input_fn=lambda: train_input_fn(filedict), steps=_ITERATIONS, hooks=[logging_hook])
 
 if __name__ == "__main__":
+    tf.logging.set_verbosity(tf.logging.INFO)
     tf.app.run()
 

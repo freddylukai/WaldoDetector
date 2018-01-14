@@ -1,15 +1,16 @@
 import tensorflow as tf
 
 _REGULARIZATION_SCALE = 0.01
-regularizer = tf.contrib.layers.l2_regularizer(scale=REGULARIZATION_SCALE)
+regularizer = tf.contrib.layers.l2_regularizer(scale=_REGULARIZATION_SCALE)
+initializer = tf.variance_scaling_initializer()
 
-def inference(x, num_classes):
+def inference(x, num_classes, batch_size):
     conv25 = tf.layers.conv2d(x,
                               filters=2,
                               kernel_size=[25,25],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv25')
@@ -18,7 +19,7 @@ def inference(x, num_classes):
                               kernel_size=[15,15],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv15')
@@ -27,7 +28,7 @@ def inference(x, num_classes):
                               kernel_size=[10,10],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv10')
@@ -36,7 +37,7 @@ def inference(x, num_classes):
                               kernel_size=[7,7],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv7')
@@ -45,7 +46,7 @@ def inference(x, num_classes):
                               kernel_size=[5,5],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv5')
@@ -54,17 +55,17 @@ def inference(x, num_classes):
                               kernel_size=[3,3],
                               padding='same',
                               activation=tf.nn.relu,
-                              kernel_initializer=tf.contrib.layers.xavier_initializer,
+                              kernel_initializer=initializer,
                               kernel_regularizer=regularizer,
                               use_bias=False,
                               name='layer1/conv3')
-    layer1_out = tf.concat([conv25, conv15, conv10, conv7, conv5, conv3], axis=2, name="layer1/concat")
+    layer1_out = tf.concat([x, conv25, conv15, conv10, conv7, conv5, conv3], axis=3, name="layer1/concat")
     layer2_conv = tf.layers.conv2d(layer1_out,
                                    filters=64,
                                    kernel_size=[3,3],
                                    padding='same',
                                    activation=tf.nn.tanh,
-                                   kernel_initializer=tf.contrib.layers.xavier_initializer,
+                                   kernel_initializer=initializer,
                                    kernel_regularizer=regularizer,
                                    use_bias=False,
                                    name='layer2/conv')
@@ -72,11 +73,11 @@ def inference(x, num_classes):
                                        filters=1,
                                        kernel_size=[1,1],
                                        padding='same',
-                                       kernel_initializer=tf.contrib.layers.xavier_initializer,
+                                       kernel_initializer=initializer,
                                        kernel_regularizer=regularizer,
                                        use_bias=False,
                                        name='probabililty_map')
-    linear = tf.reshape(probability_map, [num_classes], 'output_1d')
+    linear = tf.reshape(probability_map, [batch_size, num_classes], 'output_1d')
     return linear
 
 def loss(inference, location_one_hot):
