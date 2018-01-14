@@ -3,10 +3,10 @@ import tensorflow as tf
 from src import WaldoNet
 
 _MOMENTUM = 0.9
-_LEARNING_RATE = 0.01
+_LEARNING_RATE = 0.1
 _BATCH_SIZE = 4
 _ITERATIONS = 10000
-_MODEL_DIR = r"E:\COS 429\FinalProj\Model"
+_MODEL_DIR = r"E:\COS 429\FinalProj\Model7"
 _DATA_DIR = r"E:\COS 429\FinalProj\TheNewIms"
 _DATA_FILE = r"E:\COS 429\FinalProj\imagesForTraining.txt"
 
@@ -24,8 +24,8 @@ def decodeImage(filename, label, len):
 def train_input_fn(locations):
     f = getFileNames(_DATA_DIR, locations)
     fnames = [x[0] for x in f]
-    labels = [x[1] for x in f]
-    lens = [x[2] for x in f]
+    labels = [((x[1]//500)//50)*20+(x[1]%500)//50 for x in f]
+    lens = [x[2]//2500 for x in f]
     dataset = tf.data.Dataset.from_tensor_slices((fnames, labels, lens))
     dataset.shuffle(buffer_size=1024)
     dataset = dataset.map(decodeImage)
@@ -36,7 +36,7 @@ def train_input_fn(locations):
     return images, labels
 
 def model_fn(features, labels, mode):
-    logits = WaldoNet.inference(x=features, num_classes=250000, batch_size=_BATCH_SIZE)
+    logits = WaldoNet.inference(x=features, num_classes=100, batch_size=_BATCH_SIZE)
     predictions = {
         'classes': tf.argmax(logits, axis=1),
         'probabilities': tf.nn.softmax(logits, name='prediction_probability')
@@ -44,7 +44,7 @@ def model_fn(features, labels, mode):
     _loss = WaldoNet.loss(logits, labels)
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_or_create_global_step()
-        learning_rate = tf.train.exponential_decay(_LEARNING_RATE, global_step=global_step, decay_steps=5000, decay_rate=0.99, name='learning_rate')
+        learning_rate = tf.train.exponential_decay(_LEARNING_RATE, global_step=global_step, decay_steps=5000, decay_rate=0.9, name='learning_rate')
         tf.summary.scalar('learning_rate', learning_rate)
         optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=_MOMENTUM)
         train_op = optimizer.minimize(_loss, global_step)

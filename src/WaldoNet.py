@@ -77,7 +77,11 @@ def inference(x, num_classes, batch_size):
                                        kernel_regularizer=regularizer,
                                        use_bias=False,
                                        name='probabililty_map')
-    linear = tf.reshape(probability_map, [batch_size, num_classes], 'output_1d')
+    pooled_prob = tf.layers.max_pooling2d(probability_map,
+                                              pool_size=[50,50],
+                                              strides=[50,50],
+                                              name='pooled')
+    linear = tf.reshape(pooled_prob, [batch_size, num_classes], 'output_1d')
     return linear
 
 def loss(inference, location_one_hot):
